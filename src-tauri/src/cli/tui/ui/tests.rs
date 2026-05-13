@@ -2185,8 +2185,32 @@ fn skills_page_renders_sync_method_and_installed_rows() {
 
     assert!(all.contains(&texts::tui_skills_installed_counts(1, 0, 0, 0)));
     assert!(!all.contains(texts::tui_header_directory()));
+    assert!(all.contains(AppType::Claude.as_str()));
+    assert!(all.contains(AppType::Codex.as_str()));
+    assert!(all.contains(AppType::Gemini.as_str()));
+    assert!(all.contains(AppType::OpenCode.as_str()));
     assert!(!all.contains("hello-skill"));
     assert!(all.contains("Hello Skill"));
+}
+
+#[test]
+fn skills_page_empty_state_keeps_mcp_style_table() {
+    let _lock = lock_env();
+    let _no_color = EnvGuard::remove("NO_COLOR");
+
+    let mut app = App::new(Some(AppType::Claude));
+    app.route = Route::Skills;
+    app.focus = Focus::Content;
+
+    let data = minimal_data(&app.app_type);
+    let buf = render(&app, &data);
+    let all = all_text(&buf);
+
+    assert!(all.contains(texts::header_name()));
+    assert!(all.contains(AppType::Claude.as_str()));
+    assert!(all.contains(AppType::OpenCode.as_str()));
+    assert!(!all.contains(texts::tui_skills_empty_title()));
+    assert!(!all.contains(texts::tui_skills_empty_subtitle()));
 }
 
 #[test]
