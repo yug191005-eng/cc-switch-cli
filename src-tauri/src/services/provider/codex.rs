@@ -3,9 +3,6 @@ use std::fs;
 use std::path::Path;
 
 impl ProviderService {
-    const CODEX_AUTO_EXTRACT_RUNTIME_LOCAL_KEYS: &'static [&'static str] =
-        &["projects", "trusted_workspaces"];
-
     pub(crate) fn capture_codex_temp_launch_snapshot(
         state: &AppState,
         provider_id: &str,
@@ -87,36 +84,14 @@ impl ProviderService {
             .parse::<toml_edit::DocumentMut>()
             .map_err(|e| AppError::Message(format!("TOML parse error: {e}")))?;
 
-        let active_profile = doc
-            .get("profile")
-            .and_then(|item| item.as_str())
-            .map(str::to_string);
-
         // Remove provider-specific fields.
         let root = doc.as_table_mut();
         root.remove("model");
         root.remove("model_provider");
-        root.remove("profile");
         // Legacy/alt formats might use a top-level base_url.
         root.remove("base_url");
         // Remove entire model_providers table (provider-specific configuration)
         root.remove("model_providers");
-        if let Some(profile) = active_profile.as_deref() {
-            if let Some(profiles) = root
-                .get_mut("profiles")
-                .and_then(|item| item.as_table_mut())
-            {
-                profiles.remove(profile);
-                if profiles.is_empty() {
-                    root.remove("profiles");
-                }
-            }
-        }
-        // Codex writes workspace trust decisions at runtime. Auto-extraction
-        // must not promote local state into a global common config snippet.
-        for key in Self::CODEX_AUTO_EXTRACT_RUNTIME_LOCAL_KEYS {
-            root.remove(*key);
-        }
 
         // Clean up multiple empty lines (keep at most one blank line).
         let mut cleaned = String::new();

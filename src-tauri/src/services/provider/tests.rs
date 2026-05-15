@@ -813,8 +813,8 @@ trust_level = "trusted"
         .and_then(Value::as_str)
         .expect("p1 config should be string");
     assert!(
-        p1_stored.contains("[projects.\"/tmp/codex-project-a\"]"),
-        "effective current provider should receive runtime project trust"
+        !p1_stored.contains("[projects.\"/tmp/codex-project-a\"]"),
+        "provider snapshot should not duplicate runtime project trust once it is auto-extracted into common config"
     );
     assert!(
         p1_stored.contains("base_url = \"https://api.one-live.example/v1\""),
@@ -825,8 +825,8 @@ trust_level = "trusted"
             .codex
             .as_deref()
             .unwrap_or_default()
-            .is_empty(),
-        "runtime project trust should not be auto-extracted as common config"
+            .contains("[projects.\"/tmp/codex-project-a\"]"),
+        "runtime project trust should be auto-extracted to match upstream semantics"
     );
     drop(cfg);
 
@@ -841,8 +841,8 @@ trust_level = "trusted"
         .and_then(Value::as_str)
         .expect("db p1 config should be string");
     assert!(
-        db_p1_config.contains("[projects.\"/tmp/codex-project-a\"]"),
-        "state.save should not overwrite the effective-current backfill with stale memory"
+        !db_p1_config.contains("[projects.\"/tmp/codex-project-a\"]"),
+        "state.save should persist the de-duplicated provider snapshot"
     );
 
     let p2_live = std::fs::read_to_string(get_codex_config_path()).expect("read p2 live config");
