@@ -3092,7 +3092,7 @@ mod tests {
     }
 
     #[test]
-    fn common_snippet_picker_compat_still_shows_snippet_for_non_current_app() {
+    fn common_snippet_picker_opens_editor_for_non_current_app() {
         let mut app = App::new(Some(AppType::Claude));
         app.overlay = Overlay::CommonSnippetPicker {
             selected: snippet_picker_index_for_app_type(&AppType::Codex),
@@ -3103,16 +3103,17 @@ mod tests {
 
         app.on_key(key(KeyCode::Enter), &data);
 
-        let snippet = match &app.overlay {
-            Overlay::CommonSnippetView {
+        let editor = app.editor.as_ref().expect("expected Codex snippet editor");
+        assert_eq!(editor.kind, EditorKind::Toml);
+        assert_eq!(
+            editor.submit,
+            EditorSubmit::ConfigCommonSnippet {
                 app_type: AppType::Codex,
-                view,
-                ..
-            } => view.lines.join("\n"),
-            other => panic!("expected Codex snippet view, got {other:?}"),
-        };
+                source: CommonSnippetViewSource::Global
+            }
+        );
         assert!(
-            snippet.contains("disable_response_storage"),
+            editor.text().contains("disable_response_storage"),
             "expected Codex snippet content to be loaded from snapshot"
         );
     }
@@ -3302,26 +3303,6 @@ mod tests {
                     source: CommonSnippetViewSource::ProviderForm
                 }
             ))
-        ));
-    }
-
-    #[test]
-    fn provider_form_common_snippet_view_a_extracts_from_current_form() {
-        let mut app = App::new(Some(AppType::Claude));
-        app.route = Route::Providers;
-        app.focus = Focus::Content;
-
-        let data = data();
-        app.on_key(key(KeyCode::Char('a')), &data);
-        app.on_key(key(KeyCode::Enter), &data); // apply template -> fields
-        select_provider_common_snippet_row(&mut app);
-        app.open_provider_form_common_snippet_view(AppType::Claude, &data);
-
-        assert!(matches!(
-            app.on_key(key(KeyCode::Char('a')), &data),
-            Action::ProviderFormExtractCommonSnippet {
-                app_type: AppType::Claude
-            }
         ));
     }
 

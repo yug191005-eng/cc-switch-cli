@@ -13,7 +13,7 @@ use crate::provider::Provider;
 use crate::services::{McpService, PromptService, ProviderService};
 use crate::settings::{set_webdav_sync_settings, WebDavSyncSettings};
 
-use super::super::app::{EditorSubmit, Overlay, TextViewState, ToastKind};
+use super::super::app::{CommonSnippetViewSource, EditorSubmit, ToastKind};
 use super::super::data::{load_state, UiData};
 use super::super::form::FormState;
 use super::helpers::{
@@ -878,7 +878,7 @@ fn submit_mcp_edit(
 fn submit_config_common_snippet(
     ctx: &mut RuntimeActionContext<'_>,
     app_type: AppType,
-    source: crate::cli::tui::app::CommonSnippetViewSource,
+    source: CommonSnippetViewSource,
     content: String,
 ) -> Result<(), AppError> {
     let (next_snippet, toast) = match canonical_common_snippet(&app_type, &content) {
@@ -926,20 +926,9 @@ fn submit_config_common_snippet(
     ctx.app.editor = None;
     ctx.app.push_toast(toast, ToastKind::Success);
     *ctx.data = UiData::load(&ctx.app.app_type)?;
-
-    let snippet = next_snippet.unwrap_or_else(|| {
-        texts::tui_default_common_snippet_for_app(app_type.as_str()).to_string()
-    });
-    ctx.app.overlay = Overlay::CommonSnippetView {
-        app_type: app_type.clone(),
-        source,
-        view: TextViewState {
-            title: texts::tui_common_snippet_title(app_type.as_str()),
-            lines: snippet.lines().map(|s| s.to_string()).collect(),
-            scroll: 0,
-            action: None,
-        },
-    };
+    if matches!(source, CommonSnippetViewSource::Global) {
+        ctx.app.overlay = crate::cli::tui::app::Overlay::None;
+    }
     Ok(())
 }
 
@@ -1097,7 +1086,7 @@ mod tests {
 
     #[test]
     #[serial(home_settings)]
-    fn submit_config_common_snippet_preserves_provider_form_source() {
+    fn submit_config_common_snippet_returns_to_form_without_view_overlay() {
         let mut fixture = runtime_ctx(AppType::Claude);
 
         let mut ctx = RuntimeActionContext {
@@ -1130,11 +1119,7 @@ mod tests {
         assert!(ctx.app.editor.is_none());
         assert!(matches!(
             ctx.app.overlay,
-            Overlay::CommonSnippetView {
-                app_type: AppType::Claude,
-                source: crate::cli::tui::app::CommonSnippetViewSource::ProviderForm,
-                ..
-            }
+            crate::cli::tui::app::Overlay::None
         ));
     }
 

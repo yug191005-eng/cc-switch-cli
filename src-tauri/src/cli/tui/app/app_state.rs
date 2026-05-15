@@ -147,15 +147,6 @@ pub enum Action {
     ConfigShowFull,
     ConfigValidate,
     ConfigOpenProxyHelp,
-    ConfigCommonSnippetClear {
-        app_type: AppType,
-    },
-    ConfigCommonSnippetApply {
-        app_type: AppType,
-    },
-    ProviderFormExtractCommonSnippet {
-        app_type: AppType,
-    },
     ConfirmCommonConfigNotice,
     ConfigWebDavCheckConnection,
     ConfigWebDavUpload,

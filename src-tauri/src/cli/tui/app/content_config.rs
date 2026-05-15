@@ -892,26 +892,6 @@ impl App {
         }
     }
 
-    pub(crate) fn open_common_snippet_view(&mut self, app_type: AppType, data: &UiData) {
-        let snippet = self.common_snippet_text_for(&app_type, data);
-        let snippet = if snippet.trim().is_empty() {
-            texts::tui_default_common_snippet_for_app(app_type.as_str()).to_string()
-        } else {
-            snippet
-        };
-
-        self.overlay = Overlay::CommonSnippetView {
-            app_type: app_type.clone(),
-            source: CommonSnippetViewSource::Global,
-            view: TextViewState {
-                title: texts::tui_common_snippet_title(app_type.as_str()),
-                lines: snippet.lines().map(|s| s.to_string()).collect(),
-                scroll: 0,
-                action: None,
-            },
-        };
-    }
-
     pub(crate) fn open_proxy_help_view(
         &mut self,
         data: &UiData,
@@ -1106,30 +1086,6 @@ impl App {
             snippet,
             EditorSubmit::ConfigCommonSnippet { app_type, source },
         );
-    }
-
-    pub(crate) fn open_provider_form_common_snippet_view(
-        &mut self,
-        app_type: AppType,
-        data: &UiData,
-    ) {
-        let snippet = self.common_snippet_text_for(&app_type, data);
-        let snippet = if snippet.trim().is_empty() {
-            texts::tui_default_common_snippet_for_app(app_type.as_str()).to_string()
-        } else {
-            snippet
-        };
-
-        self.overlay = Overlay::CommonSnippetView {
-            app_type: app_type.clone(),
-            source: CommonSnippetViewSource::ProviderForm,
-            view: TextViewState {
-                title: texts::tui_common_snippet_title(app_type.as_str()),
-                lines: snippet.lines().map(|s| s.to_string()).collect(),
-                scroll: 0,
-                action: None,
-            },
-        };
     }
 
     fn maybe_show_common_config_notice(&mut self) {

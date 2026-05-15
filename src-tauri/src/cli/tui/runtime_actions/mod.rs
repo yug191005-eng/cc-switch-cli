@@ -272,15 +272,6 @@ pub(crate) fn handle_action(
         Action::ConfigRestoreBackup { id } => config::restore_backup(&mut ctx, id),
         Action::ConfigValidate => config::validate(&mut ctx),
         Action::ConfigOpenProxyHelp => config::open_proxy_help(&mut ctx),
-        Action::ConfigCommonSnippetClear { app_type } => {
-            config::clear_common_snippet(&mut ctx, app_type)
-        }
-        Action::ConfigCommonSnippetApply { app_type } => {
-            config::apply_common_snippet(&mut ctx, app_type)
-        }
-        Action::ProviderFormExtractCommonSnippet { app_type } => {
-            config::extract_common_snippet_from_provider_form(&mut ctx, app_type)
-        }
         Action::ConfirmCommonConfigNotice => {
             ctx.app.common_config_notice_confirmed = true;
             crate::settings::set_common_config_confirmed(true)?;

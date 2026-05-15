@@ -198,11 +198,6 @@ pub enum Overlay {
     FailoverQueueManager {
         selected: usize,
     },
-    CommonSnippetView {
-        app_type: AppType,
-        source: CommonSnippetViewSource,
-        view: TextViewState,
-    },
     ClaudeModelPicker {
         selected: usize,
         editing: bool,

@@ -647,6 +647,47 @@ fn provider_form_fields_show_dashed_divider_before_common_snippet() {
 }
 
 #[test]
+fn provider_form_json_preview_highlights_common_config_lines() {
+    let _lock = lock_env();
+    let _no_color = EnvGuard::remove("NO_COLOR");
+
+    let mut app = App::new(Some(AppType::Claude));
+    app.route = Route::Providers;
+    app.focus = Focus::Content;
+    let mut form = crate::cli::tui::form::ProviderAddFormState::new(AppType::Claude);
+    form.focus = FormFocus::JsonPreview;
+    form.include_common_config = true;
+    form.claude_api_key.set("sk-provider");
+    app.form = Some(FormState::ProviderAdd(form));
+
+    let mut data = minimal_data(&app.app_type);
+    data.config.common_snippet = r#"{
+        "env": {
+            "COMMON_FLAG": "1"
+        }
+    }"#
+    .to_string();
+
+    let buf = render(&app, &data);
+    let theme = theme_for(&app.app_type);
+    let mut common_bg = None;
+    let mut provider_key_bg = None;
+
+    for y in 0..buf.area.height {
+        let line = line_at(&buf, y);
+        if let Some(x) = line.find("\"COMMON_FLAG\"") {
+            common_bg = Some(buf[(x as u16, y)].bg);
+        }
+        if let Some(x) = line.find("\"ANTHROPIC_AUTH_TOKEN\"") {
+            provider_key_bg = Some(buf[(x as u16, y)].bg);
+        }
+    }
+
+    assert_eq!(common_bg, Some(theme.surface));
+    assert_ne!(provider_key_bg, Some(theme.surface));
+}
+
+#[test]
 fn header_is_wrapped_in_a_rect_block() {
     let _lock = lock_env();
     let _no_color = EnvGuard::remove("NO_COLOR");
@@ -2937,16 +2978,12 @@ fn footer_shows_only_global_actions() {
     let mut app = App::new(Some(AppType::Claude));
     app.route = Route::Config;
     app.focus = Focus::Content;
-    app.overlay = Overlay::CommonSnippetView {
-        app_type: AppType::Claude,
-        source: crate::cli::tui::app::CommonSnippetViewSource::Global,
-        view: crate::cli::tui::app::TextViewState {
-            title: "Common Snippet".to_string(),
-            lines: vec!["{}".to_string()],
-            scroll: 0,
-            action: None,
-        },
-    };
+    app.overlay = Overlay::TextView(crate::cli::tui::app::TextViewState {
+        title: "Common Snippet".to_string(),
+        lines: vec!["{}".to_string()],
+        scroll: 0,
+        action: None,
+    });
     let data = minimal_data(&app.app_type);
 
     let buf = render(&app, &data);
