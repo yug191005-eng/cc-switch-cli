@@ -427,7 +427,8 @@ impl ProviderService {
                 AppError::Config("Codex 供应商配置缺少 'config' 字段或不是字符串".to_string())
             })?;
 
-        crate::codex_config::write_codex_live_for_provider(
+        crate::codex_config::write_codex_provider_live_with_catalog(
+            &provider.settings_config,
             Self::codex_live_write_category(provider),
             auth,
             Some(cfg_text),

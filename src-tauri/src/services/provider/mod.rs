@@ -1837,7 +1837,7 @@ impl ProviderService {
         }
 
         let settings_config = match app_type {
-            AppType::Codex => crate::codex_config::read_codex_live_settings()?,
+            AppType::Codex => crate::codex_config::read_codex_live_settings_with_model_catalog()?,
             AppType::Claude => {
                 let settings_path = get_claude_settings_path();
                 if !settings_path.exists() {
@@ -1943,7 +1943,7 @@ impl ProviderService {
     /// 读取当前 live 配置
     pub fn read_live_settings(app_type: AppType) -> Result<Value, AppError> {
         match app_type {
-            AppType::Codex => crate::codex_config::read_codex_live_settings(),
+            AppType::Codex => crate::codex_config::read_codex_live_settings_with_model_catalog(),
             AppType::Claude => {
                 let path = get_claude_settings_path();
                 if !path.exists() {

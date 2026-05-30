@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     app_config::AppType,
-    codex_config::{get_codex_auth_path, get_codex_config_path, write_codex_live_atomic},
+    codex_config::{get_codex_auth_path, get_codex_config_path},
     config::{get_claude_settings_path, read_json_file, write_json_file, write_text_file},
     database::Database,
     gemini_config::{
@@ -2311,7 +2311,7 @@ impl ProxyService {
     }
 
     fn read_codex_live(&self) -> Result<Value, String> {
-        crate::codex_config::read_codex_live_settings()
+        crate::codex_config::read_codex_live_settings_with_model_catalog()
             .map_err(|error| format!("read Codex live config failed: {error}"))
     }
 
@@ -2332,8 +2332,26 @@ impl ProxyService {
             .get("auth")
             .ok_or_else(|| "Codex config missing auth field".to_string())?;
         let config_text = config.get("config").and_then(Value::as_str);
+        let mut settings = config.clone();
+        if !settings
+            .get("modelCatalog")
+            .and_then(|catalog| catalog.get("models"))
+            .is_some()
+        {
+            if let Some(root) = settings.as_object_mut() {
+                root.insert(
+                    "modelCatalog".to_string(),
+                    provider
+                        .settings_config
+                        .get("modelCatalog")
+                        .cloned()
+                        .unwrap_or_else(|| json!({ "models": [] })),
+                );
+            }
+        }
 
-        crate::codex_config::write_codex_live_for_provider(
+        crate::codex_config::write_codex_provider_live_with_catalog(
+            &settings,
             crate::services::provider::ProviderService::codex_live_write_category(provider),
             auth,
             config_text,
@@ -2350,8 +2368,10 @@ impl ProxyService {
 
         // Proxy restore applies the saved backup config without another stable-provider rewrite.
         match (auth, config_text) {
-            (Some(auth), Some(config_text)) => write_codex_live_atomic(auth, Some(config_text))
-                .map_err(|error| format!("write Codex live config failed: {error}")),
+            (Some(auth), Some(config_text)) => {
+                crate::codex_config::write_codex_live_with_catalog(config, auth, Some(config_text))
+                    .map_err(|error| format!("write Codex live config failed: {error}"))
+            }
             (Some(auth), None) => write_json_file(&get_codex_auth_path(), auth)
                 .map_err(|error| format!("write Codex auth.json failed: {error}")),
             (None, Some(config_text)) => write_text_file(&get_codex_config_path(), config_text)
@@ -4997,11 +5017,52 @@ model = "gpt-5.4"
 name = "RightCode"
 base_url = "https://rightcode.example/v1"
 wire_api = "responses"
-"#
+"#,
+                "modelCatalog": {
+                    "models": [
+                        {
+                            "model": "rightcode-fast",
+                            "displayName": "RightCode Fast",
+                            "contextWindow": "64000"
+                        }
+                    ]
+                }
             }),
             None,
         );
         provider.category = Some("custom".to_string());
+        write_json_file(
+            &crate::codex_config::get_codex_config_dir().join("models_cache.json"),
+            &json!({
+                "models": [
+                    {
+                        "slug": "gpt-5.5",
+                        "display_name": "GPT-5.5",
+                        "description": "Frontier model",
+                        "base_instructions": "gpt-5.5 base instructions",
+                        "model_messages": {
+                            "instructions_template": "gpt-5.5 instructions template",
+                            "instructions_variables": {
+                                "personality_default": "",
+                                "personality_friendly": "",
+                                "personality_pragmatic": ""
+                            }
+                        },
+                        "additional_speed_tiers": ["fast"],
+                        "service_tiers": [],
+                        "availability_nux": {
+                            "message": "GPT-5.5 is now available."
+                        },
+                        "upgrade": {
+                            "target": "gpt-5.5"
+                        },
+                        "context_window": 272000,
+                        "max_context_window": 272000
+                    }
+                ]
+            }),
+        )
+        .expect("seed Codex model cache");
         let takeover_settings = json!({
             "auth": {
                 "OPENAI_API_KEY": PROXY_TOKEN_PLACEHOLDER
@@ -5035,6 +5096,19 @@ wire_api = "responses"
         assert!(
             live_config.contains(PROXY_TOKEN_PLACEHOLDER),
             "live config should carry the proxy placeholder token"
+        );
+        assert!(
+            live_config.contains("model_catalog_json"),
+            "provider-aware proxy writes should project the provider model catalog"
+        );
+        let generated_catalog: Value =
+            read_json_file(&crate::codex_config::get_codex_model_catalog_path())
+                .expect("read generated Codex model catalog");
+        assert_eq!(
+            generated_catalog
+                .pointer("/models/0/slug")
+                .and_then(Value::as_str),
+            Some("rightcode-fast")
         );
     }
 

@@ -326,7 +326,8 @@ impl ConfigService {
         }
         let cfg_text = settings.get("config").and_then(Value::as_str);
 
-        crate::codex_config::write_codex_live_for_provider(
+        crate::codex_config::write_codex_provider_live_with_catalog(
+            &provider.settings_config,
             ProviderService::codex_live_write_category(provider),
             auth,
             cfg_text,
