@@ -43,6 +43,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
+pub const HERMES_DEFAULT_API_MODE: &str = "chat_completions";
+pub const HERMES_API_MODES: [&str; 4] = [
+    "chat_completions",
+    "anthropic_messages",
+    "codex_responses",
+    "bedrock_converse",
+];
+
 // ============================================================================
 // Path Functions
 // ============================================================================

@@ -159,6 +159,113 @@ mod tests {
     }
 
     #[test]
+    fn build_hermes_settings_config_writes_upstream_snake_case_shape() {
+        let cfg = build_hermes_settings_config(
+            None,
+            "anthropic_messages",
+            " https://openrouter.ai/api/v1/// ",
+            " sk-hermes ",
+            json!([
+                {
+                    "id": "anthropic/claude-opus-4-7",
+                    "name": "Claude Opus 4.7",
+                    "context_length": 1000000
+                }
+            ]),
+            "0.5",
+        )
+        .expect("build Hermes settings");
+
+        assert_eq!(cfg["api_mode"], "anthropic_messages");
+        assert_eq!(cfg["base_url"], "https://openrouter.ai/api/v1");
+        assert_eq!(cfg["api_key"], "sk-hermes");
+        assert_eq!(cfg["rate_limit_delay"], 0.5);
+        assert_eq!(cfg["models"][0]["id"], "anthropic/claude-opus-4-7");
+    }
+
+    #[test]
+    fn build_hermes_settings_config_removes_legacy_aliases_and_preserves_unknown_fields() {
+        let cfg = build_hermes_settings_config(
+            Some(&json!({
+                "api": "openai-completions",
+                "apiMode": "bedrock_converse",
+                "baseUrl": "https://legacy.example/v1",
+                "baseURL": "https://legacy-upper.example/v1",
+                "endpoint": "https://legacy-endpoint.example/v1",
+                "apiKey": "sk-legacy",
+                "auth_token": "sk-auth-token",
+                "key_env": "HERMES_API_KEY",
+                "models": [
+                    { "id": "legacy-model" }
+                ]
+            })),
+            "",
+            "",
+            "",
+            json!([]),
+            "",
+        )
+        .expect("build Hermes settings");
+        let obj = cfg.as_object().expect("settings object");
+
+        assert_eq!(
+            obj.get("api_mode"),
+            Some(&json!(crate::hermes_config::HERMES_DEFAULT_API_MODE))
+        );
+        assert_eq!(obj.get("auth_token"), Some(&json!("sk-auth-token")));
+        assert_eq!(obj.get("key_env"), Some(&json!("HERMES_API_KEY")));
+        assert!(obj.get("base_url").is_none());
+        assert!(obj.get("api_key").is_none());
+        assert!(obj.get("models").is_none());
+        assert!(obj.get("rate_limit_delay").is_none());
+        for legacy_key in ["api", "apiMode", "baseUrl", "baseURL", "endpoint", "apiKey"] {
+            assert!(
+                !obj.contains_key(legacy_key),
+                "Hermes save should drop legacy alias {legacy_key}"
+            );
+        }
+    }
+
+    #[test]
+    fn build_hermes_settings_config_omits_invalid_delay_and_rejects_non_array_models() {
+        let cfg = build_hermes_settings_config(None, "codex_responses", "", "", json!([]), "-1")
+            .expect("build Hermes settings");
+        assert_eq!(cfg["api_mode"], "codex_responses");
+        assert!(cfg.get("rate_limit_delay").is_none());
+
+        let err = build_hermes_settings_config(
+            None,
+            "chat_completions",
+            "",
+            "",
+            json!({"id": "model"}),
+            "",
+        )
+        .expect_err("non-array models should fail");
+        assert!(err.to_string().contains("models"));
+    }
+
+    #[test]
+    fn hermes_edit_defaults_read_legacy_aliases() {
+        let defaults = HermesPromptDefaults::from_settings(Some(&json!({
+            "apiMode": "bedrock_converse",
+            "baseUrl": "https://legacy.example/v1",
+            "apiKey": "sk-legacy",
+            "auth_token": "sk-auth-token",
+            "models": [
+                { "id": "legacy-model", "name": "Legacy Model" }
+            ],
+            "rate_limit_delay": 1.25
+        })));
+
+        assert_eq!(defaults.api_mode, "bedrock_converse");
+        assert_eq!(defaults.base_url, "https://legacy.example/v1");
+        assert_eq!(defaults.api_key, "sk-legacy");
+        assert!(defaults.models_json.contains("legacy-model"));
+        assert_eq!(defaults.rate_limit_delay, "1.25");
+    }
+
+    #[test]
     fn build_openclaw_settings_config_writes_canonical_shape() {
         let cfg = build_openclaw_settings_config(
             None,
@@ -289,7 +396,7 @@ pub fn prompt_settings_config_for_add(
         (AppType::Codex, ProviderAddMode::ThirdParty) => prompt_codex_config(None),
         (AppType::Gemini, _) => prompt_gemini_config(None),
         (AppType::OpenCode, _) => Ok(json!({})),
-        (AppType::Hermes, _) => Ok(json!({})),
+        (AppType::Hermes, _) => prompt_hermes_config(None),
         (AppType::OpenClaw, _) => prompt_openclaw_config(None),
     }
 }
@@ -357,6 +464,234 @@ fn build_codex_official_settings_config(current: Option<&Value>) -> Result<Value
         "auth": auth,
         "config": cleaned_config
     }))
+}
+
+struct HermesPromptDefaults {
+    api_mode: String,
+    api_key: String,
+    base_url: String,
+    models_json: String,
+    rate_limit_delay: String,
+}
+
+impl HermesPromptDefaults {
+    fn from_settings(current: Option<&Value>) -> Self {
+        let settings = current.and_then(Value::as_object);
+        let api_mode = settings
+            .and_then(|obj| obj.get("api_mode").or_else(|| obj.get("apiMode")))
+            .and_then(Value::as_str)
+            .map(normalize_hermes_api_mode)
+            .unwrap_or_else(|| crate::hermes_config::HERMES_DEFAULT_API_MODE.to_string());
+        let api_key = settings
+            .and_then(|obj| {
+                obj.get("api_key")
+                    .or_else(|| obj.get("apiKey"))
+                    .or_else(|| obj.get("auth_token"))
+            })
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let base_url = settings
+            .and_then(|obj| {
+                obj.get("base_url")
+                    .or_else(|| obj.get("baseUrl"))
+                    .or_else(|| obj.get("baseURL"))
+                    .or_else(|| obj.get("endpoint"))
+            })
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let models_json = settings
+            .and_then(|obj| obj.get("models"))
+            .and_then(Value::as_array)
+            .map(|models| Value::Array(models.clone()))
+            .and_then(|value| serde_json::to_string(&value).ok())
+            .unwrap_or_else(|| "[]".to_string());
+        let rate_limit_delay = settings
+            .and_then(|obj| obj.get("rate_limit_delay"))
+            .and_then(Value::as_f64)
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .map(|value| value.to_string())
+            .unwrap_or_default();
+
+        Self {
+            api_mode,
+            api_key,
+            base_url,
+            models_json,
+            rate_limit_delay,
+        }
+    }
+}
+
+fn prompt_hermes_config(current: Option<&Value>) -> Result<Value, AppError> {
+    println!("\n{}", texts::tui_label_app_hermes().bright_cyan().bold());
+
+    let defaults = HermesPromptDefaults::from_settings(current);
+    let api_modes = crate::hermes_config::HERMES_API_MODES
+        .iter()
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>();
+    let api_mode_index = api_modes
+        .iter()
+        .position(|candidate| candidate == &defaults.api_mode)
+        .unwrap_or(0);
+
+    let api_mode = Select::new(texts::tui_label_hermes_api_mode(), api_modes)
+        .with_starting_cursor(api_mode_index)
+        .with_help_message(hermes_api_mode_help())
+        .prompt()
+        .map_err(|e| AppError::Message(texts::input_failed_error(&e.to_string())))?;
+
+    let base_url = if defaults.base_url.is_empty() {
+        Text::new(texts::tui_label_hermes_base_url())
+            .with_placeholder("https://api.example.com/v1")
+            .with_help_message(texts::tui_hermes_base_url_scheme())
+            .prompt()
+    } else {
+        Text::new(texts::tui_label_hermes_base_url())
+            .with_initial_value(&defaults.base_url)
+            .with_help_message(texts::tui_hermes_base_url_scheme())
+            .prompt()
+    }
+    .map_err(|e| AppError::Message(texts::input_failed_error(&e.to_string())))?;
+
+    let api_key = if defaults.api_key.is_empty() {
+        Text::new(texts::api_key_label())
+            .with_placeholder("sk-...")
+            .with_help_message(texts::api_key_help())
+            .prompt()
+    } else {
+        Text::new(texts::api_key_label())
+            .with_initial_value(&defaults.api_key)
+            .with_help_message(texts::api_key_help())
+            .prompt()
+    }
+    .map_err(|e| AppError::Message(texts::input_failed_error(&e.to_string())))?;
+
+    let models_json = if defaults.models_json == "[]" {
+        Text::new(texts::tui_label_hermes_models())
+            .with_placeholder(r#"[{"id":"gpt-4.1","name":"GPT 4.1"}]"#)
+            .with_help_message(hermes_models_json_help())
+            .prompt()
+    } else {
+        Text::new(texts::tui_label_hermes_models())
+            .with_initial_value(&defaults.models_json)
+            .with_help_message(hermes_models_json_help())
+            .prompt()
+    }
+    .map_err(|e| AppError::Message(texts::input_failed_error(&e.to_string())))?;
+    let models_value = parse_hermes_models_json(&models_json)?;
+
+    let rate_limit_delay = if defaults.rate_limit_delay.is_empty() {
+        Text::new(texts::tui_label_hermes_rate_limit_delay())
+            .with_placeholder("0.5")
+            .with_help_message(texts::tui_hint_hermes_rate_limit_delay())
+            .prompt()
+    } else {
+        Text::new(texts::tui_label_hermes_rate_limit_delay())
+            .with_initial_value(&defaults.rate_limit_delay)
+            .with_help_message(texts::tui_hint_hermes_rate_limit_delay())
+            .prompt()
+    }
+    .map_err(|e| AppError::Message(texts::input_failed_error(&e.to_string())))?;
+
+    build_hermes_settings_config(
+        current,
+        &api_mode,
+        &base_url,
+        &api_key,
+        models_value,
+        &rate_limit_delay,
+    )
+}
+
+fn build_hermes_settings_config(
+    current: Option<&Value>,
+    api_mode: &str,
+    base_url: &str,
+    api_key: &str,
+    models_value: Value,
+    rate_limit_delay: &str,
+) -> Result<Value, AppError> {
+    let mut settings_obj = current
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+
+    for legacy_key in ["api", "apiKey", "apiMode", "baseUrl", "baseURL", "endpoint"] {
+        settings_obj.remove(legacy_key);
+    }
+
+    settings_obj.insert(
+        "api_mode".to_string(),
+        json!(normalize_hermes_api_mode(api_mode)),
+    );
+
+    let base_url = base_url.trim().trim_end_matches('/').to_string();
+    set_or_remove_trimmed(&mut settings_obj, "base_url", &base_url);
+    set_or_remove_trimmed(&mut settings_obj, "api_key", api_key);
+
+    let models_value = normalize_hermes_models_value(models_value)?;
+    if models_value.as_array().is_some_and(Vec::is_empty) {
+        settings_obj.remove("models");
+    } else {
+        settings_obj.insert("models".to_string(), models_value);
+    }
+
+    set_or_remove_f64(&mut settings_obj, "rate_limit_delay", rate_limit_delay);
+
+    Ok(Value::Object(settings_obj))
+}
+
+fn normalize_hermes_api_mode(api_mode: &str) -> String {
+    let api_mode = api_mode.trim();
+    if crate::hermes_config::HERMES_API_MODES
+        .iter()
+        .any(|candidate| *candidate == api_mode)
+    {
+        api_mode.to_string()
+    } else {
+        crate::hermes_config::HERMES_DEFAULT_API_MODE.to_string()
+    }
+}
+
+fn parse_hermes_models_json(raw: &str) -> Result<Value, AppError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(json!([]));
+    }
+    let value = serde_json::from_str::<Value>(trimmed)
+        .map_err(|err| AppError::InvalidInput(texts::tui_toast_invalid_json(&err.to_string())))?;
+    normalize_hermes_models_value(value)
+}
+
+fn normalize_hermes_models_value(value: Value) -> Result<Value, AppError> {
+    if value.is_array() {
+        Ok(value)
+    } else {
+        Err(AppError::localized(
+            "provider.hermes.models.invalid",
+            "Hermes 模型列表必须是 JSON 数组",
+            "Hermes models must be a JSON array",
+        ))
+    }
+}
+
+fn hermes_api_mode_help() -> &'static str {
+    if crate::cli::i18n::is_chinese() {
+        "供应商 API 协议。请选择与端点匹配的格式。"
+    } else {
+        "Provider API protocol. Choose the format that matches your endpoint."
+    }
+}
+
+fn hermes_models_json_help() -> &'static str {
+    if crate::cli::i18n::is_chinese() {
+        "JSON 数组；留空或 [] 表示不写入模型。"
+    } else {
+        "JSON array; leave empty or [] to omit models."
+    }
 }
 
 struct OpenClawPromptDefaults {
@@ -610,6 +945,21 @@ fn set_or_remove_trimmed(settings_obj: &mut Map<String, Value>, key: &str, value
     }
 }
 
+fn set_or_remove_f64(settings_obj: &mut Map<String, Value>, key: &str, value: &str) {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        settings_obj.remove(key);
+    } else if let Ok(value) = trimmed.parse::<f64>() {
+        if value.is_finite() && value >= 0.0 {
+            settings_obj.insert(key.to_string(), json!(value));
+        } else {
+            settings_obj.remove(key);
+        }
+    } else {
+        settings_obj.remove(key);
+    }
+}
+
 /// 可选字段集合
 #[derive(Default)]
 pub struct OptionalFields {
@@ -777,7 +1127,7 @@ pub fn prompt_settings_config(
         }
         AppType::Gemini => prompt_gemini_config(current),
         AppType::OpenCode => Ok(current.cloned().unwrap_or_else(|| json!({}))),
-        AppType::Hermes => Ok(current.cloned().unwrap_or_else(|| json!({}))),
+        AppType::Hermes => prompt_hermes_config(current),
         AppType::OpenClaw => prompt_openclaw_config(current),
     }
 }

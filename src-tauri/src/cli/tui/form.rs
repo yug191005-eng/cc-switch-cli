@@ -27,16 +27,10 @@ pub(crate) use provider_state::{
     detect_balance_provider_for_usage_query, detect_coding_plan_provider_for_usage_query,
 };
 
+pub(crate) use crate::hermes_config::{HERMES_API_MODES, HERMES_DEFAULT_API_MODE};
 pub(crate) use crate::openclaw_config::{
     OPENCLAW_API_PROTOCOLS, OPENCLAW_DEFAULT_API_PROTOCOL, OPENCLAW_DEFAULT_USER_AGENT,
 };
-pub const HERMES_DEFAULT_API_MODE: &str = "chat_completions";
-pub const HERMES_API_MODES: [&str; 4] = [
-    "chat_completions",
-    "anthropic_messages",
-    "codex_responses",
-    "bedrock_converse",
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeminiAuthType {
