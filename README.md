@@ -121,6 +121,8 @@ cc-switch config webdav show         # Inspect WebDAV sync settings
 cc-switch env tools                  # Check local CLI tools
 cc-switch mcp sync                   # Sync MCP servers
 cc-switch proxy show                 # Inspect proxy routes and status
+cc-switch web serve                  # Start the local web provider/config/update console
+cc-switch web serve --host 0.0.0.0 --port 3088 # Expose it on a server
 
 # Use the global `--app` flag to target specific applications:
 cc-switch --app claude provider list    # Manage Claude providers

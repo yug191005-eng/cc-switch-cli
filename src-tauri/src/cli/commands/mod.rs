@@ -23,3 +23,4 @@ pub mod settings;
 pub mod skills;
 pub mod start;
 pub mod update;
+pub mod web;

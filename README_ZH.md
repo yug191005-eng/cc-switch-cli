@@ -121,6 +121,8 @@ cc-switch config webdav show         # 查看 WebDAV 同步设置
 cc-switch env tools                  # 检查本地 CLI 工具
 cc-switch mcp sync                   # 同步 MCP 服务器
 cc-switch proxy show                 # 查看代理路由和状态
+cc-switch web serve                  # 启动本地 Web 供应商/配置/更新管理界面
+cc-switch web serve --host 0.0.0.0 --port 3088 # 在服务器上对外提供 Web 服务
 
 # 使用全局 `--app` 参数来指定目标应用：
 cc-switch --app claude provider list    # 管理 Claude 供应商

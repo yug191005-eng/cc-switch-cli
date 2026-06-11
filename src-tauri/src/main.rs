@@ -75,6 +75,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
         Some(Commands::Daemon(cmd)) => cc_switch_lib::cli::commands::daemon::execute(cmd),
         Some(Commands::Env(cmd)) => cc_switch_lib::cli::commands::env::execute(cmd, cli.app),
         Some(Commands::Update(cmd)) => cc_switch_lib::cli::commands::update::execute(cmd),
+        Some(Commands::Web(cmd)) => cc_switch_lib::cli::commands::web::execute(cmd),
         Some(Commands::Completions(cmd)) => cc_switch_lib::cli::commands::completions::execute(cmd),
         Some(Commands::Internal(cmd)) => cc_switch_lib::cli::commands::internal::execute(cmd),
     }
@@ -90,6 +91,7 @@ fn command_requires_startup_state(command: &Option<Commands>) -> bool {
         Some(Commands::Completions(_))
         | Some(Commands::Auth(_))
         | Some(Commands::Update(_))
+        | Some(Commands::Web(_))
         | Some(Commands::Internal(_))
         | Some(Commands::Sessions(_)) => false,
         #[cfg(unix)]

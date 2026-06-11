@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CC Switch Web</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">CS</span>
+        <div>
+          <div class="brand-title">CC Switch</div>
+          <div class="brand-subtitle">Web Console</div>
+        </div>
+      </div>
+      <nav id="sectionTabs" class="section-tabs" aria-label="Sections">
+        <button type="button" class="section-tab active" data-section="providers">Providers</button>
+        <button type="button" class="section-tab" data-section="config">Config</button>
+        <button type="button" class="section-tab" data-section="update">Update</button>
+      </nav>
+      <nav id="appTabs" class="app-tabs" aria-label="Applications"></nav>
+      <div class="top-actions">
+        <button id="reloadBtn" type="button" class="icon-btn" title="Reload">R</button>
+      </div>
+    </header>
+
+    <main id="providersWorkspace" class="workspace">
+      <aside class="provider-pane">
+        <div class="pane-head">
+          <div>
+            <h1 id="appTitle">Providers</h1>
+            <p id="appMeta" class="muted"></p>
+          </div>
+          <button id="newBtn" type="button" class="primary-btn">+ New</button>
+        </div>
+        <div class="pane-actions">
+          <button id="importLiveBtn" type="button">Import live</button>
+          <button id="moveUpBtn" type="button" title="Move up">Up</button>
+          <button id="moveDownBtn" type="button" title="Move down">Down</button>
+        </div>
+        <div id="providerList" class="provider-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="editor-pane">
+        <div class="editor-head">
+          <div>
+            <h2 id="providerTitle">Select a provider</h2>
+            <p id="providerSubtitle" class="muted"></p>
+          </div>
+          <div class="editor-actions">
+            <button id="switchBtn" type="button">Switch</button>
+            <button id="duplicateBtn" type="button">Duplicate</button>
+            <button id="saveBtn" type="button" class="primary-btn">Save</button>
+            <button id="deleteBtn" type="button" class="danger-btn">Delete</button>
+          </div>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Provider panels">
+          <button class="segment active" data-panel="configPanel" type="button">Config</button>
+          <button class="segment" data-panel="actionsPanel" type="button">Actions</button>
+          <button class="segment" data-panel="usagePanel" type="button">Usage</button>
+          <button class="segment" data-panel="exportPanel" type="button">Export</button>
+        </div>
+
+        <section id="configPanel" class="panel active">
+          <form id="providerForm" class="grid-form">
+            <label>
+              <span>ID</span>
+              <input id="fieldId" name="id" autocomplete="off" readonly />
+            </label>
+            <label>
+              <span>Name</span>
+              <input id="fieldName" name="name" autocomplete="off" />
+            </label>
+            <label>
+              <span>Website URL</span>
+              <input id="fieldWebsite" name="websiteUrl" autocomplete="off" />
+            </label>
+            <label>
+              <span>Category</span>
+              <input id="fieldCategory" name="category" autocomplete="off" />
+            </label>
+            <label>
+              <span>Sort index</span>
+              <input id="fieldSort" name="sortIndex" type="number" min="0" />
+            </label>
+            <label>
+              <span>Icon</span>
+              <input id="fieldIcon" name="icon" autocomplete="off" />
+            </label>
+            <label>
+              <span>Icon color</span>
+              <input id="fieldIconColor" name="iconColor" autocomplete="off" placeholder="#008f7a" />
+            </label>
+            <label class="check-row">
+              <input id="fieldFailover" name="inFailoverQueue" type="checkbox" />
+              <span>Failover queue</span>
+            </label>
+            <label id="commonConfigRow" class="check-row">
+              <input id="fieldCommonConfig" name="commonConfigEnabled" type="checkbox" />
+              <span>Common config</span>
+            </label>
+            <label class="span-2">
+              <span>Notes</span>
+              <textarea id="fieldNotes" name="notes" rows="3"></textarea>
+            </label>
+            <label class="span-2">
+              <span>settingsConfig</span>
+              <textarea id="settingsJson" rows="13" spellcheck="false"></textarea>
+            </label>
+            <label class="span-2">
+              <span>meta</span>
+              <textarea id="metaJson" rows="10" spellcheck="false"></textarea>
+            </label>
+          </form>
+        </section>
+
+        <section id="actionsPanel" class="panel">
+          <div class="action-grid">
+            <div class="action-block">
+              <h3>Provider checks</h3>
+              <div class="button-row">
+                <button id="speedtestBtn" type="button">Speedtest</button>
+                <button id="streamCheckBtn" type="button">Stream check</button>
+                <button id="fetchModelsBtn" type="button">Fetch models</button>
+                <button id="quotaBtn" type="button">Quota</button>
+              </div>
+            </div>
+            <div class="action-block">
+              <h3>Live config</h3>
+              <div class="button-row">
+                <button id="removeLiveBtn" type="button">Remove from config</button>
+                <button id="setDefaultBtn" type="button">Set default</button>
+              </div>
+              <label>
+                <span>Default model</span>
+                <input id="defaultModelInput" autocomplete="off" />
+              </label>
+            </div>
+            <div class="action-block span-2">
+              <h3>One-off model fetch</h3>
+              <div class="inline-form">
+                <input id="oneOffBaseUrl" placeholder="Base URL" autocomplete="off" />
+                <input id="oneOffApiKey" placeholder="API key" autocomplete="off" />
+                <select id="oneOffAuth">
+                  <option value="">Default auth</option>
+                  <option value="bearer">Bearer</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="google_api_key">Google API key</option>
+                </select>
+                <button id="oneOffFetchBtn" type="button">Fetch</button>
+              </div>
+            </div>
+          </div>
+          <pre id="actionOutput" class="output-box"></pre>
+        </section>
+
+        <section id="usagePanel" class="panel">
+          <form id="usageForm" class="grid-form">
+            <label class="check-row">
+              <input id="usageEnabled" type="checkbox" />
+              <span>Enabled</span>
+            </label>
+            <label>
+              <span>Template</span>
+              <select id="usageTemplate">
+                <option value="custom">custom</option>
+                <option value="general">general</option>
+                <option value="newapi">newapi</option>
+                <option value="balance">balance</option>
+              </select>
+            </label>
+            <label>
+              <span>Timeout</span>
+              <input id="usageTimeout" type="number" min="1" />
+            </label>
+            <label>
+              <span>Auto query interval</span>
+              <input id="usageInterval" type="number" min="0" />
+            </label>
+            <label>
+              <span>API key</span>
+              <input id="usageApiKey" autocomplete="off" />
+            </label>
+            <label>
+              <span>Base URL</span>
+              <input id="usageBaseUrl" autocomplete="off" />
+            </label>
+            <label>
+              <span>Access token</span>
+              <input id="usageAccessToken" autocomplete="off" />
+            </label>
+            <label>
+              <span>User ID</span>
+              <input id="usageUserId" autocomplete="off" />
+            </label>
+            <label class="span-2">
+              <span>Code</span>
+              <textarea id="usageCode" rows="14" spellcheck="false"></textarea>
+            </label>
+          </form>
+          <div class="button-row">
+            <button id="saveUsageBtn" type="button" class="primary-btn">Save usage query</button>
+            <button id="clearUsageBtn" type="button" class="danger-btn">Clear</button>
+          </div>
+        </section>
+
+        <section id="exportPanel" class="panel">
+          <div class="inline-form">
+            <input id="exportPath" placeholder="Output path" autocomplete="off" />
+            <button id="previewExportBtn" type="button">Preview</button>
+            <button id="writeExportBtn" type="button" class="primary-btn">Write</button>
+          </div>
+          <pre id="exportOutput" class="output-box"></pre>
+        </section>
+      </section>
+    </main>
+
+    <main id="configWorkspace" class="management-workspace" hidden>
+      <section class="management-pane">
+        <div class="editor-head">
+          <div>
+            <h2>Configuration</h2>
+            <p id="configSubtitle" class="muted"></p>
+          </div>
+          <div class="editor-actions">
+            <button id="refreshConfigBtn" type="button">Refresh</button>
+            <button id="syncLiveBtn" type="button" class="primary-btn">Sync live</button>
+          </div>
+        </div>
+
+        <div class="management-grid">
+          <section class="action-block">
+            <h3>Status</h3>
+            <div id="configStatus" class="status-grid"></div>
+          </section>
+
+          <section class="action-block">
+            <h3>Backups</h3>
+            <div class="inline-form compact">
+              <input id="backupName" placeholder="Backup name" autocomplete="off" />
+              <button id="createBackupBtn" type="button">Create</button>
+            </div>
+            <div id="backupList" class="backup-list"></div>
+          </section>
+
+          <section class="action-block">
+            <h3>Common config</h3>
+            <div class="inline-form compact">
+              <select id="commonAppSelect"></select>
+              <button id="saveCommonBtn" type="button" class="primary-btn">Save</button>
+              <button id="clearCommonBtn" type="button" class="danger-btn">Clear</button>
+            </div>
+            <textarea id="commonSnippet" rows="12" spellcheck="false"></textarea>
+          </section>
+
+          <section class="action-block">
+            <h3>Import / Export</h3>
+            <div class="button-row">
+              <button id="downloadExportBtn" type="button">Download SQL</button>
+            </div>
+            <label>
+              <span>SQL file</span>
+              <input id="importSqlFile" type="file" accept=".sql,text/plain" />
+            </label>
+            <label>
+              <span>SQL text</span>
+              <textarea id="importSqlText" rows="7" spellcheck="false"></textarea>
+            </label>
+            <label class="check-row">
+              <input id="syncLiveAfterImport" type="checkbox" checked />
+              <span>Sync live after import</span>
+            </label>
+            <div class="button-row">
+              <button id="importSqlBtn" type="button" class="danger-btn">Import SQL</button>
+            </div>
+          </section>
+
+          <section class="action-block span-2">
+            <h3>Snapshot</h3>
+            <div class="button-row">
+              <button id="saveSnapshotBtn" type="button" class="danger-btn">Apply JSON</button>
+            </div>
+            <textarea id="configJson" rows="18" spellcheck="false"></textarea>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <main id="updateWorkspace" class="management-workspace" hidden>
+      <section class="management-pane update-pane">
+        <div class="editor-head">
+          <div>
+            <h2>Update</h2>
+            <p id="updateSubtitle" class="muted"></p>
+          </div>
+          <div class="editor-actions">
+            <button id="checkUpdateBtn" type="button">Check</button>
+            <button id="applyUpdateBtn" type="button" class="primary-btn" disabled>Update</button>
+          </div>
+        </div>
+
+        <div class="management-grid">
+          <section class="action-block">
+            <h3>Version</h3>
+            <div id="updateStatus" class="status-grid"></div>
+          </section>
+
+          <section class="action-block">
+            <h3>Target</h3>
+            <label>
+              <span>Version tag</span>
+              <input id="targetTagInput" autocomplete="off" placeholder="v5.3.1" />
+            </label>
+          </section>
+
+          <section class="action-block span-2">
+            <h3>Output</h3>
+            <pre id="updateOutput" class="output-box"></pre>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="newDialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head">
+          <h2>New provider</h2>
+          <button id="closeDialogBtn" type="button" class="icon-btn" title="Close">X</button>
+        </div>
+        <label>
+          <span>Template</span>
+          <select id="templateSelect"></select>
+        </label>
+        <div class="grid-form">
+          <label>
+            <span>ID</span>
+            <input id="newId" autocomplete="off" />
+          </label>
+          <label>
+            <span>Name</span>
+            <input id="newName" autocomplete="off" />
+          </label>
+          <label>
+            <span>Website URL</span>
+            <input id="newWebsite" autocomplete="off" />
+          </label>
+          <label>
+            <span>Category</span>
+            <input id="newCategory" autocomplete="off" />
+          </label>
+          <label id="newCommonConfigRow" class="check-row">
+            <input id="newCommonConfig" type="checkbox" />
+            <span>Common config</span>
+          </label>
+          <label class="span-2">
+            <span>settingsConfig</span>
+            <textarea id="newSettingsJson" rows="10" spellcheck="false"></textarea>
+          </label>
+          <label class="span-2">
+            <span>meta</span>
+            <textarea id="newMetaJson" rows="8" spellcheck="false"></textarea>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button id="createProviderBtn" type="button" class="primary-btn">Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

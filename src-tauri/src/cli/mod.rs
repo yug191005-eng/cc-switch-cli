@@ -107,6 +107,10 @@ pub enum Commands {
     /// Update cc-switch binary to latest release
     Update(commands::update::UpdateCommand),
 
+    /// Start the web provider management UI
+    #[command(subcommand)]
+    Web(commands::web::WebCommand),
+
     /// Enter interactive mode
     #[command(alias = "ui")]
     Interactive,
@@ -1770,5 +1774,26 @@ mod tests {
 
         assert!(rendered.contains("--activate"));
         assert!(rendered.contains("unexpected argument"));
+    }
+
+    #[test]
+    fn parses_web_serve_command() {
+        let cli = Cli::parse_from([
+            "cc-switch",
+            "web",
+            "serve",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "3099",
+        ]);
+
+        match cli.command {
+            Some(Commands::Web(super::commands::web::WebCommand::Serve { host, port })) => {
+                assert_eq!(host, "0.0.0.0");
+                assert_eq!(port, 3099);
+            }
+            _ => panic!("expected web serve command"),
+        }
     }
 }

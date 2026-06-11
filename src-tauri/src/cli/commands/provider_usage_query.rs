@@ -1,4 +1,5 @@
 use clap::{Args, Subcommand, ValueEnum};
+use serde::Deserialize;
 use std::fmt;
 
 use crate::app_config::AppType;
@@ -126,7 +127,8 @@ pub struct ProviderUsageQuerySetCommand {
     pub user_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UsageQueryTemplate {
     Custom,
     General,
@@ -135,7 +137,7 @@ pub enum UsageQueryTemplate {
 }
 
 impl UsageQueryTemplate {
-    fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::Custom => "custom",
             Self::General => "general",
@@ -313,7 +315,7 @@ fn default_usage_script() -> UsageScript {
     usage_script_for_template(UsageQueryTemplate::General)
 }
 
-fn default_usage_script_for_provider(provider: &Provider) -> UsageScript {
+pub(crate) fn default_usage_script_for_provider(provider: &Provider) -> UsageScript {
     usage_script_for_template(default_usage_template_for_provider(provider))
 }
 
@@ -393,7 +395,7 @@ fn default_code_for_template(template: UsageQueryTemplate) -> &'static str {
     }
 }
 
-fn default_code_for_template_for_provider(
+pub(crate) fn default_code_for_template_for_provider(
     template: UsageQueryTemplate,
     app_type: &AppType,
     provider: &Provider,
@@ -438,7 +440,7 @@ fn apply_template_code(
     }
 }
 
-fn normalize_usage_interval(value: u64) -> u64 {
+pub(crate) fn normalize_usage_interval(value: u64) -> u64 {
     value.min(MAX_USAGE_AUTO_QUERY_INTERVAL)
 }
 
@@ -446,7 +448,7 @@ fn template_requires_script(template: &str) -> bool {
     !matches!(template, "github_copilot" | "token_plan" | "balance")
 }
 
-fn validate_usage_script_for_save(script: &UsageScript) -> Result<(), AppError> {
+pub(crate) fn validate_usage_script_for_save(script: &UsageScript) -> Result<(), AppError> {
     if !script.enabled {
         return Ok(());
     }

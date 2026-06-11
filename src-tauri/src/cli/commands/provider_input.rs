@@ -10,11 +10,13 @@ use crate::services::ProviderService;
 use clap::ValueEnum;
 use colored::Colorize;
 use inquire::{Confirm, Select, Text};
+use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Deserialize)]
 #[value(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum ProviderAddTemplate {
     Custom,
     ClaudeOfficial,
