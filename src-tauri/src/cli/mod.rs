@@ -182,6 +182,27 @@ mod tests {
     }
 
     #[test]
+    fn parses_web_serve_subcommand() {
+        let cli = Cli::parse_from([
+            "cc-switch",
+            "web",
+            "serve",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "3088",
+        ]);
+
+        match cli.command {
+            Some(Commands::Web(super::commands::web::WebCommand::Serve { host, port })) => {
+                assert_eq!(host, "0.0.0.0");
+                assert_eq!(port, 3088);
+            }
+            _ => panic!("expected web serve command"),
+        }
+    }
+
+    #[test]
     fn parses_use_shortcut_command() {
         let cli = Cli::parse_from(["cc-switch", "use", "demo"]);
 
