@@ -653,7 +653,7 @@ fn asset_name_from_url(url: &str) -> Result<String, AppError> {
 async fn download_manifest_release_asset(
     client: &reqwest::Client,
     manifest: &UpdateManifest,
-    on_progress: Option<&dyn Fn(u64, Option<u64>)>,
+    on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
 ) -> Result<(DownloadedAsset, ManifestAsset), AppError> {
     let assets =
         manifest_asset_candidates(manifest, current_platform_key()?, linux_libc_preference()?)?;
@@ -682,7 +682,7 @@ async fn download_legacy_release_asset(
     client: &reqwest::Client,
     target_tag: &str,
     release: Option<&ReleaseInfo>,
-    on_progress: Option<&dyn Fn(u64, Option<u64>)>,
+    on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
 ) -> Result<(DownloadedAsset, ReleaseAsset), AppError> {
     let release = match release {
         Some(release) => release.clone(),
@@ -989,7 +989,7 @@ async fn download_release_asset(
     client: &reqwest::Client,
     url: &str,
     asset_name: &str,
-    on_progress: Option<&dyn Fn(u64, Option<u64>)>,
+    on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
 ) -> Result<DownloadedAsset, AppError> {
     let response = client
         .get(url)
@@ -1422,7 +1422,7 @@ fn build_update_check_info(
 
 pub(crate) async fn download_and_apply(
     target_tag: &str,
-    on_progress: impl Fn(u64, Option<u64>),
+    on_progress: impl Fn(u64, Option<u64>) + Send + Sync,
 ) -> Result<(), AppError> {
     // Same brew-prefix guard as the CLI path (see execute_async).
     if is_homebrew_install() {
