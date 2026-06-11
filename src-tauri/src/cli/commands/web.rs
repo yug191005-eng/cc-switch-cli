@@ -254,11 +254,24 @@ async fn save_config_snapshot(
     validate_config_snapshot(&request.config)?;
 
     let backup_id = create_named_backup(request.backup_name.as_deref())?;
+    let previous_config = {
+        app_state
+            .state
+            .config
+            .read()
+            .map_err(AppError::from)?
+            .clone()
+    };
     {
         let mut config = app_state.state.config.write().map_err(AppError::from)?;
         *config = request.config;
     }
-    app_state.state.save()?;
+    if let Err(error) = app_state.state.save() {
+        if let Ok(mut config) = app_state.state.config.write() {
+            *config = previous_config;
+        }
+        return Err(error.into());
+    }
     app_state.state.refresh_config_from_db()?;
 
     let sync_warning =
